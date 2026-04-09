@@ -1,0 +1,65 @@
+{
+  "name": "@minitool/feishu-bot",
+  "version": "0.1.0",
+  "description": "飞书自定义机器人 SDK — 支持 text/post/image/share_chat/interactive 五种消息类型，透明处理图片上传",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "release": "release-it"
+  },
+  "keywords": [
+    "feishu",
+    "lark",
+    "bot",
+    "webhook",
+    "sdk",
+    "飞书",
+    "机器人"
+  ],
+  "author": "hidumou",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hidumou/feishu-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hidumou/feishu-bot/issues"
+  },
+  "homepage": "https://github.com/hidumou/feishu-bot#readme",
+  "packageManager": "pnpm@10.29.2",
+  "devDependencies": {
+    "@release-it/conventional-changelog": "^10.0.6",
+    "@types/node": "^25.5.2",
+    "release-it": "^19.2.4",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.7",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.3"
+  }
+}
