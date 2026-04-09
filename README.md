@@ -1,5 +1,10 @@
 # @minitool/feishu-bot
 
+[![npm version](https://img.shields.io/npm/v/@minitool/feishu-bot.svg?logo=npm)](https://www.npmjs.com/package/@minitool/feishu-bot)
+[![npm downloads](https://img.shields.io/npm/dm/@minitool/feishu-bot.svg)](https://www.npmjs.com/package/@minitool/feishu-bot)
+[![GitHub release](https://img.shields.io/github/v/release/hidumou/feishu-bot.svg?logo=github)](https://github.com/hidumou/feishu-bot/releases)
+[![License](https://img.shields.io/npm/l/@minitool/feishu-bot.svg)](./LICENSE)
+
 > 轻量、零运行时依赖、TypeScript 优先的飞书自定义机器人 SDK。
 
 - ✅ 支持全部 5 种消息类型：`text` / `post` / `image` / `share_chat` / `interactive`
@@ -208,13 +213,6 @@ const payload = buildText('hi', { atAll: true });
 - body 大小 `≤ 20KB`
 
 SDK 不做内置限流；请在调用方按需排队或节流。
-
-## Roadmap
-
-下面是计划在 v0.2 加入的特性（当前版本已评估但延后）：
-
-- **更细粒度的错误类型**：在 `FeishuApiError` 之上拆分 `FeishuNetworkError` / `FeishuTimeoutError` / `FeishuHttpError` 子类（或在当前类上加 `kind` 字段），便于调用方区分超时、网络抖动、HTTP 状态码错误与业务 code。
-- **图片上传自定义元数据**：`uploadImage` / `sendImage` 支持 `{ filename, contentType }` 选项，用于 Buffer/Uint8Array 入参时指定文件名与 MIME。
 
 ## 许可
 
