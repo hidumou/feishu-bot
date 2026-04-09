@@ -314,6 +314,35 @@ interface TokenStorage {
 
 SDK 不做内置限流；请在调用方按需排队或节流。
 
+## 发布流程
+
+发布由 `.github/workflows/release.yml` 在 `v*` 标签 push 时统一触发：CI 跑完 typecheck/test/build 后调用 `pnpm publish`，再用 `gh release create` 从 `CHANGELOG.md` 提取本版本的 release notes 创建 GitHub Release。
+
+本地有两种打 tag 方式，二选一：
+
+**A) 用 release-it 自动 bump（推荐）**
+
+```bash
+pnpm release          # 交互式
+pnpm release --ci     # 非交互，conventional commits 自动决定 minor/patch
+```
+
+`release-it` 已经禁用了 `npm.publish` / `github.release`，只负责：跑 typecheck+test → 由 conventional-changelog 决定下一个版本 → 跑 build → 更新 `CHANGELOG.md` → 创建 `chore: release vX.Y.Z` commit → 打 tag → push。push 之后剩下的事情交给 release.yml。
+
+**B) 手动 bump**
+
+```bash
+# 1. 改 package.json version
+# 2. 在 CHANGELOG.md 顶部新增本版本条目
+# 3. 提交并打 tag
+git add package.json CHANGELOG.md
+git commit -m "chore: release v0.x.0"
+git tag v0.x.0
+git push origin main v0.x.0
+```
+
+不论 A 还是 B，触发点都是「v* tag push」，避免 release-it 与 release.yml 重复 publish 的冲突。
+
 ## 许可
 
 MIT © hidumou
