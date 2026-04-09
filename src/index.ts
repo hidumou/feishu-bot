@@ -53,5 +53,9 @@ export {
 export { genSign, currentTimestamp } from './signer.js';
 
 // 底层组件（高级用法）
-export { TokenManager } from './token-manager.js';
+export {
+  TokenManager,
+  type TokenStorage,
+  type CachedToken,
+} from './token-manager.js';
 export { ImageUploader, type ImageSource } from './image-uploader.js';

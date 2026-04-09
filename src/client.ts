@@ -8,7 +8,7 @@ import { buildPost } from './messages/post.js';
 import { buildShareChat } from './messages/share-chat.js';
 import { buildText } from './messages/text.js';
 import { currentTimestamp, genSign } from './signer.js';
-import { TokenManager } from './token-manager.js';
+import { TokenManager, type TokenStorage } from './token-manager.js';
 import type {
   AtOptions,
   FeishuApiResponse,
@@ -40,6 +40,7 @@ export class FeishuBot {
   private readonly fetchImpl?: typeof fetch;
   private readonly timeout?: number;
   private readonly baseUrl: string;
+  private readonly tokenStorage?: TokenStorage;
 
   private tokenManager: TokenManager | null = null;
   private imageUploader: ImageUploader | null = null;
@@ -53,6 +54,7 @@ export class FeishuBot {
     this.fetchImpl = options.fetch;
     this.timeout = options.timeout;
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+    this.tokenStorage = options.tokenStorage;
   }
 
   // ---------- 原子发送 ----------
@@ -70,7 +72,7 @@ export class FeishuBot {
     if (this.secret) {
       const timestamp = currentTimestamp();
       finalPayload.timestamp = String(timestamp);
-      finalPayload.sign = genSign(timestamp, this.secret);
+      finalPayload.sign = await genSign(timestamp, this.secret);
     }
 
     const response = await postJson<FeishuApiResponse<T>>(
@@ -166,6 +168,7 @@ export class FeishuBot {
         fetch: this.fetchImpl,
         timeout: this.timeout,
         baseUrl: this.baseUrl,
+        storage: this.tokenStorage,
       });
     }
     return this.tokenManager;

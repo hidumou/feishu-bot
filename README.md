@@ -5,13 +5,14 @@
 [![GitHub release](https://img.shields.io/github/v/release/hidumou/feishu-bot.svg?logo=github)](https://github.com/hidumou/feishu-bot/releases)
 [![License](https://img.shields.io/npm/l/@minitool/feishu-bot.svg)](./LICENSE)
 
-> 轻量、零运行时依赖、TypeScript 优先的飞书自定义机器人 SDK。
+> 轻量、零运行时依赖、TypeScript 优先、**真正同构**的飞书自定义机器人 SDK。
 
 - ✅ 支持全部 5 种消息类型：`text` / `post` / `image` / `share_chat` / `interactive`
-- ✅ 透明处理图片上传：`sendImage('./local.png')` 自动走 `im/v1/images` 接口取 `image_key` 再发送
-- ✅ 自动注入签名（HMAC-SHA256）
-- ✅ `tenant_access_token` 自动缓存与刷新
-- ✅ 仅依赖 Node 18+ 内置 `fetch` / `FormData` / `Blob` / `node:crypto` / `node:fs/promises`，零运行时依赖
+- ✅ 透明处理图片上传：`sendImage(blob)` / `sendImage('./local.png')` 自动走 `im/v1/images` 接口取 `image_key` 再发送
+- ✅ 自动注入签名（HMAC-SHA256，基于 WebCrypto）
+- ✅ `tenant_access_token` 自动缓存与刷新，可选注入 `TokenStorage` 适配器（适合 MV3 SW 跨重启复用）
+- ✅ **同构**：同一个 bundle 在 Node 18+ / 浏览器 / Service Worker / 浏览器扩展 SW (MV3) / Cloudflare Workers / Deno / Bun 都能跑
+- ✅ 零运行时依赖，仅使用各运行时内置的 `fetch` / `FormData` / `Blob` / `crypto.subtle`
 - ✅ 构造期不抛错，便于「先 new 再注入配置」
 
 ## 安装
@@ -22,7 +23,8 @@ pnpm add @minitool/feishu-bot
 npm install @minitool/feishu-bot
 ```
 
-要求 Node.js ≥ 18。
+**运行时要求**：Node.js ≥ 18 / Chrome ≥ 89 / Firefox ≥ 90 / Safari ≥ 15 / Cloudflare Workers / Deno / Bun。
+凡是支持 `fetch` + `WebCrypto (crypto.subtle)` + `FormData` + `Blob` 的运行时都能用。
 
 ## 快速开始
 
@@ -54,6 +56,7 @@ await bot.sendText('Hello 飞书！');
 | `fetch` | — | 可选 | 注入自定义 fetch，测试用 |
 | `timeout` | — | 可选 | 请求超时，单位毫秒，默认 `10000` |
 | `baseUrl` | — | 可选 | 飞书开放平台基础 URL，默认 `https://open.feishu.cn` |
+| `tokenStorage` | — | 可选 | `TokenStorage` 适配器；用于让 `tenant_access_token` 在跨进程/跨重启时复用，详见下方「浏览器扩展 SW」小节 |
 
 > SDK 本身不引入 `dotenv`。如果你想用 `.env` 文件，可以通过 `node --env-file=.env app.js`（Node 20.6+）或在项目 devDep 里装 `dotenv` 自行预加载。
 
@@ -98,13 +101,17 @@ await bot.sendPost({
 // 1. 已有 image_key（以 `img_` 开头）→ 直发
 await bot.sendImage('img_v2_041b28e3-xxx');
 
-// 2. 本地文件路径 → 自动上传再发（需要 appId/appSecret）
+// 2. 本地文件路径 → 自动上传再发（仅 Node，需要 appId/appSecret）
 await bot.sendImage('./screenshot.png');
 
-// 3. Buffer / Uint8Array → 自动上传再发
+// 3. Buffer / Uint8Array → 自动上传再发（同构）
 import { readFile } from 'node:fs/promises';
 const buf = await readFile('./screenshot.png');
 await bot.sendImage(buf);
+
+// 4. Blob / File → 自动上传再发（浏览器 / SW / 扩展首选）
+const resp = await fetch('https://example.com/banner.png');
+await bot.sendImage(await resp.blob());
 
 // 也可以只拿 image_key，稍后自己复用
 const imageKey = await bot.uploadImage('./screenshot.png');
@@ -112,6 +119,8 @@ await bot.sendImage(imageKey);
 ```
 
 > ⚠️ 图片上传需要自建应用的 App ID / App Secret，因为飞书 `im/v1/images` 接口要求 `tenant_access_token` 授权。
+>
+> ℹ️ 在浏览器 / SW / 扩展中，**只能用 `Blob` / `File` / `Uint8Array`**——传字符串路径会抛 `FeishuConfigError`。
 
 ### share_chat 分享群名片
 
@@ -186,7 +195,7 @@ sign         = Base64(HmacSHA256(key = stringToSign, data = ''))
 | `send(payload)` | 原子发送，接受已构造好的 `MessagePayload` |
 | `sendText(text, { atUserIds?, atAll? })` | 文本消息 |
 | `sendPost(post)` | 富文本 |
-| `sendImage(input)` | 图片：`string`（`img_` 前缀→直发 / 其它→路径上传）、`Buffer`、`Uint8Array` |
+| `sendImage(input)` | 图片：`string`（`img_` 前缀→直发 / 其它→路径上传，仅 Node）、`Buffer`、`Uint8Array`、`Blob`、`File` |
 | `sendShareChat(shareChatId)` | 分享群名片 |
 | `sendInteractive(card)` | 卡片 |
 | `uploadImage(file)` | 单独上传图片，返回 `image_key` |
@@ -203,6 +212,97 @@ import { buildText, buildPost, buildImage } from '@minitool/feishu-bot';
 const payload = buildText('hi', { atAll: true });
 // => { msg_type: 'text', content: { text: 'hi <at user_id="all">所有人</at>' } }
 ```
+
+## 在浏览器 / Service Worker / 浏览器扩展 (MV3) 中使用
+
+本 SDK 是真正同构的 —— 同一个 `dist/index.js` 可以直接在以下环境运行：Node 18+、现代浏览器主线程、Web/Service Worker、Chrome MV3 扩展 background SW、Cloudflare Workers、Deno、Bun。
+
+### 关键差异
+
+| 能力 | Node | 浏览器主线程 | MV3 SW |
+|---|:---:|:---:|:---:|
+| 文本 / 富文本 / 卡片 / 群名片 | ✅ | ⚠️ CORS¹ | ✅ |
+| 图片上传：`Blob` / `File` / `Uint8Array` | ✅ | ⚠️ CORS¹ | ✅ |
+| 图片上传：本地文件路径 string | ✅ | ❌ | ❌ |
+| `tenant_access_token` 跨重启复用 | 进程内即可 | localStorage 等 | ✅ 推荐 `chrome.storage.session` |
+
+¹ 浏览器主线程直连 `open.feishu.cn` 会被 CORS 拦截。**MV3 SW 不受 CORS 约束**，只要 `manifest.json` 里声明了 `host_permissions` 即可。
+
+### Chrome MV3 扩展示例
+
+`manifest.json`：
+
+```json
+{
+  "manifest_version": 3,
+  "name": "My Extension",
+  "version": "1.0.0",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "host_permissions": ["https://open.feishu.cn/*"],
+  "permissions": ["storage"]
+}
+```
+
+`background.ts`（用 Vite + `@crxjs/vite-plugin` 或 webpack 打包成 `background.js`）：
+
+```ts
+import { FeishuBot, type TokenStorage } from '@minitool/feishu-bot';
+
+// MV3 SW 空闲 ~30s 就会被杀，内存里的 token 会丢。
+// 注入 chrome.storage.session 适配器，让 token 在 SW 重启间存活。
+const tokenStorage: TokenStorage = {
+  async get() {
+    const { feishuToken } = await chrome.storage.session.get('feishuToken');
+    return feishuToken ?? null;
+  },
+  async set(value) {
+    await chrome.storage.session.set({ feishuToken: value });
+  },
+};
+
+const bot = new FeishuBot({
+  webhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx',
+  secret: 'your-secret',          // 可选
+  appId: 'cli_xxx',               // 仅图片上传需要
+  appSecret: 'xxx',
+  tokenStorage,                   // ← 关键
+});
+
+// 文本
+await bot.sendText('hello from extension');
+
+// 图片：从网络拉一个 Blob 直接发
+const resp = await fetch('https://example.com/banner.png');
+await bot.sendImage(await resp.blob());
+
+// 或从 OffscreenCanvas
+const blob = await offscreenCanvas.convertToBlob();
+await bot.sendImage(blob);
+```
+
+### `TokenStorage` 接口
+
+```ts
+interface CachedToken {
+  token: string;
+  /** Unix 毫秒时间戳 */
+  expiresAt: number;
+}
+
+interface TokenStorage {
+  /** 没有缓存或读失败时返回 null */
+  get(): Promise<CachedToken | null>;
+  /** 写入新的 token；写失败不应抛 */
+  set(value: CachedToken): Promise<void>;
+}
+```
+
+`TokenManager` 内部按以下顺序查找：**内存缓存 → `TokenStorage` → 网络**。`storage` 抛任何异常都会被吞掉并降级到下一层，永不阻塞主流程。
+
+> 同样的适配器接口也可以用于 Cloudflare Workers KV、Redis、文件系统、Deno KV 等任何外部存储。
 
 ## 频控与限制
 

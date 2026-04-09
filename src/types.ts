@@ -2,6 +2,8 @@
  * 飞书自定义机器人 SDK 的类型定义。
  */
 
+import type { TokenStorage } from './token-manager.js';
+
 /** SDK 构造配置 */
 export interface FeishuBotOptions {
   /** 机器人 webhook URL。默认读 `process.env.FEISHU_BOT_WEBHOOK` */
@@ -18,6 +20,12 @@ export interface FeishuBotOptions {
   timeout?: number;
   /** 飞书开放平台基础 URL，默认 https://open.feishu.cn */
   baseUrl?: string;
+  /**
+   * 可选的 tenant_access_token 持久化适配器。
+   * 注入后 token 会写入外部存储，避免每次冷启动（如 MV3 SW 被杀）都重新拉取。
+   * 典型用法见 TokenStorage 文档。
+   */
+  tokenStorage?: TokenStorage;
 }
 
 /** 飞书 OpenAPI 统一返回结构 */
